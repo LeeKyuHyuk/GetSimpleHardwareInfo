@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Management;
 using System.Runtime.InteropServices;
@@ -104,7 +104,7 @@ namespace GetSimpleHardwareInfo
                 if (obj["Name"] != null)
                     computerName = obj["Name"].ToString();
             }
-            Console.WriteLine(computerVendor + " - " + computerVersion + " (" + computerName + ")");
+            Console.WriteLine(computerVendor + " " + computerVersion + " (" + computerName + ")");
         }
         public void GetOperatingSystemInfo()
         {
@@ -125,7 +125,7 @@ namespace GetSimpleHardwareInfo
         {
             ManagementObjectSearcher objects = new ManagementObjectSearcher("SELECT Name,NumberOfCores,NumberOfLogicalProcessors FROM Win32_Processor");
             ManagementObjectCollection coll = objects.Get();
-            Console.WriteLine("[+] Platform Information");
+            Console.WriteLine("[+] System Information");
             foreach (ManagementObject obj in coll)
             {
                 if (obj["Name"] != null)
@@ -167,12 +167,12 @@ namespace GetSimpleHardwareInfo
             {
                 Console.WriteLine(e.Message);
             }
-            ManagementObjectSearcher objects = new ManagementObjectSearcher("SELECT Version,EmbeddedControllerMajorVersion,EmbeddedControllerMinorVersion FROM Win32_BIOS");
+            ManagementObjectSearcher objects = new ManagementObjectSearcher("SELECT SMBIOSBIOSVersion,EmbeddedControllerMajorVersion,EmbeddedControllerMinorVersion FROM Win32_BIOS");
             ManagementObjectCollection coll = objects.Get();
             foreach (ManagementObject obj in coll)
             {
-                if (obj["Version"] != null)
-                    biosVersion = obj["Version"].ToString() + ", " + biosDate;
+                if (obj["SMBIOSBIOSVersion"] != null)
+                    biosVersion = obj["SMBIOSBIOSVersion"].ToString() + ", " + biosDate;
                 if (obj["EmbeddedControllerMajorVersion"] != null)
                     ecMajor = obj["EmbeddedControllerMajorVersion"].ToString();
                 if (obj["EmbeddedControllerMinorVersion"] != null)
@@ -183,12 +183,12 @@ namespace GetSimpleHardwareInfo
         }
         public void GetVideoInfo()
         {
-            ManagementObjectSearcher objects = new ManagementObjectSearcher("SELECT VideoProcessor,DriverVersion FROM Win32_VideoController");
+            ManagementObjectSearcher objects = new ManagementObjectSearcher("SELECT Name,DriverVersion FROM Win32_VideoController");
             ManagementObjectCollection coll = objects.Get();
             foreach (ManagementObject obj in coll)
             {
-                if (obj["VideoProcessor"] != null)
-                    videoName.Add(obj["VideoProcessor"].ToString());
+                if (obj["Name"] != null)
+                    videoName.Add(obj["Name"].ToString());
                 if (obj["DriverVersion"] != null)
                     videoDriverVersion.Add(obj["DriverVersion"].ToString());
             }
@@ -210,11 +210,11 @@ namespace GetSimpleHardwareInfo
                 if (obj["FirmwareRevision"] != null)
                     diskFirmware.Add(obj["FirmwareRevision"].ToString());
             }
-            Console.WriteLine("[+] Device Information");
-            Console.WriteLine("   - Device Name : " + diskModel[0]);
+            Console.WriteLine("[+] Storage Information");
+            Console.WriteLine("   - Storage Name : " + diskModel[0]);
             for (int index = 1; index < diskModel.Count; index++)
                 Console.WriteLine("\t\t" + diskModel[index]);
-            Console.WriteLine("   - Device FW : " + diskFirmware[0]);
+            Console.WriteLine("   - Storage FW : " + diskFirmware[0]);
             for (int index = 1; index < diskFirmware.Count; index++)
                 Console.WriteLine("\t\t" + diskFirmware[index]);
         }
@@ -231,63 +231,70 @@ namespace GetSimpleHardwareInfo
                 if (obj["FileSystem"] != null)
                     partitionFileSystem.Add(obj["FileSystem"].ToString());
             }
-            Console.WriteLine("   - Device Density : " + partitionId[0] + "\\ " + Math.Round((Convert.ToDouble(partitionSize[0])/1024/1024/1024), 3) + "GB " + partitionFileSystem[0]);
+            Console.WriteLine("   - Storage Density : " + partitionId[0] + "\\ " + Math.Round(Convert.ToDouble(partitionSize[0])/1024/1024/1024, 3) + "GB " + partitionFileSystem[0]);
             for (int index = 1; index < partitionSize.Count; index++)
-                Console.WriteLine("\t\t" + partitionId[index] + "\\ " + Math.Round((Convert.ToDouble(partitionSize[index]) / 1024 / 1024 / 1024), 3) + "GB " + partitionFileSystem[index]);
+                Console.WriteLine("\t\t" + partitionId[index] + "\\ " + Math.Round(Convert.ToDouble(partitionSize[index]) / 1024 / 1024 / 1024, 3) + "GB " + partitionFileSystem[index]);
         }
     }
 
     class GenerateWallpaper
     {
-        private Wmi wmi;
+        private readonly Wmi wmi;
         public GenerateWallpaper(Wmi wmi)
         {
             this.wmi = wmi;
         }
         public string GetFileName()
         {
-            return Path.Combine(Path.GetTempPath(), "GetSimpleHardwareInfo.bmp");
+            return Path.Combine(Path.GetTempPath(), "GetSimpleHardwareInfo.png");
         }
         public void Run()
         {
             Rectangle resolution = Screen.PrimaryScreen.Bounds;
-            int xPosition = resolution.Width - 700, yPosition = 20;
+            int xPosition = resolution.Width - 900, yPosition = 20;
             Bitmap bitmap = new Bitmap(resolution.Width, resolution.Height);
             Graphics graphics = Graphics.FromImage(bitmap);
             graphics.Clear(Color.Black);
-            DrawString(graphics, wmi.computerVendor + " - " + wmi.computerVersion + " (" + wmi.computerName + ")", 30, FontStyle.Bold, Color.Yellow, xPosition, yPosition, 40, out yPosition);
+            DrawString(graphics, wmi.computerVendor + " " + wmi.computerVersion + " (" + wmi.computerName + ")", 40, FontStyle.Bold, Color.Yellow, xPosition, yPosition, 50, out yPosition);
             DrawString(graphics, wmi.osCaption + " " + wmi.osArchitecture + ", " + wmi.osVersion, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             DrawString(graphics, wmi.secureBoot, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             DrawString(graphics, wmi.modernStanby, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Platform Information", 25, FontStyle.Regular, Color.YellowGreen, xPosition, yPosition, 40, out yPosition);
-            DrawString(graphics, "CPU : \t" + wmi.cpuName, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Physical Core : \t" + wmi.cpuNumberOfCores, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Logicial Core : \t" + wmi.cpuNumberOfLogicalProcessors, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Memory : \t" + wmi.memoryCapacity, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "BIOS : \t" + wmi.biosVersion, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawHorizontalBar(graphics, Color.Khaki, 800, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "System Information", 25, FontStyle.Regular, Color.YellowGreen, xPosition, yPosition, 40, out yPosition);
+            DrawString(graphics, "CPU : \t\t\t\t" + wmi.cpuName, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "Physical Core : \t\t\t" + wmi.cpuNumberOfCores, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "Logicial Core : \t\t\t" + wmi.cpuNumberOfLogicalProcessors, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "Memory : \t\t\t" + wmi.memoryCapacity, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "BIOS : \t\t\t\t" + wmi.biosVersion, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             DrawString(graphics, "Embedded Controller Version : \t" + wmi.ecMajor + "." + wmi.ecMinor, 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Video Name : \t" + wmi.videoName[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "Video Name : \t\t\t" + wmi.videoName[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             for (int index = 1; index < wmi.videoName.Count; index++)
-                DrawString(graphics, "\t\t" + wmi.videoName[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Video Driver Version : \t" + wmi.videoDriverVersion[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+                DrawString(graphics, "\t\t\t\t" + wmi.videoName[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "Video Driver Version : \t\t" + wmi.videoDriverVersion[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             for (int index = 1; index < wmi.videoDriverVersion.Count; index++)
-                DrawString(graphics, "\t\t" + wmi.videoDriverVersion[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Device Information", 25, FontStyle.Regular, Color.YellowGreen, xPosition, yPosition, 40, out yPosition);
-            DrawString(graphics, "Device Name : \t" + wmi.diskModel[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+                DrawString(graphics, "\t\t\t\t" + wmi.videoDriverVersion[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawHorizontalBar(graphics, Color.Khaki, 800, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "Storage Information", 25, FontStyle.Regular, Color.YellowGreen, xPosition, yPosition, 40, out yPosition);
+            DrawString(graphics, "Storage Name : \t\t\t" + wmi.diskModel[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             for (int index = 1; index < wmi.diskModel.Count; index++)
-                DrawString(graphics, "\t\t" + wmi.diskModel[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Device FW : \t" + wmi.diskFirmware[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+                DrawString(graphics, "\t\t\t\t" + wmi.diskModel[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "Storage FW : \t\t\t" + wmi.diskFirmware[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             for (int index = 1; index < wmi.diskFirmware.Count; index++)
-                DrawString(graphics, "\t\t" + wmi.diskFirmware[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
-            DrawString(graphics, "Device Density : \t" + wmi.partitionId[0] + "\\ " + Math.Round((Convert.ToDouble(wmi.partitionSize[0]) / 1024 / 1024 / 1024), 3) + "GB " + wmi.partitionFileSystem[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+                DrawString(graphics, "\t\t\t\t" + wmi.diskFirmware[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+            DrawString(graphics, "Storage Density : \t\t" + wmi.partitionId[0] + "\\ " + Math.Round(Convert.ToDouble(wmi.partitionSize[0]) / 1024 / 1024 / 1024, 3) + "GB " + wmi.partitionFileSystem[0], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             for (int index = 1; index < wmi.partitionSize.Count; index++)
-                DrawString(graphics, "\t\t" + wmi.partitionId[index] + "\\ " + Math.Round((Convert.ToDouble(wmi.partitionSize[index]) / 1024 / 1024 / 1024), 3) + "GB " + wmi.partitionFileSystem[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
+                DrawString(graphics, "\t\t\t\t" + wmi.partitionId[index] + "\\ " + Math.Round(Convert.ToDouble(wmi.partitionSize[index]) / 1024 / 1024 / 1024, 3) + "GB " + wmi.partitionFileSystem[index], 20, FontStyle.Regular, Color.White, xPosition, yPosition, 30, out yPosition);
             graphics.DrawImage(bitmap, new Point(10, 10));
-            bitmap.Save(GetFileName());
+            bitmap.Save(GetFileName(), ImageFormat.Png);
         }
         private void DrawString(Graphics graphics, string text, int size, FontStyle fontStyle, Color fontColor, int xPosition, int yPosition, int yMargin, out int outYPosition)
         {
             graphics.DrawString(text, new Font(new FontFamily("Tahoma"), size, fontStyle, GraphicsUnit.Pixel), new SolidBrush(fontColor), new PointF(xPosition, yPosition));
+            outYPosition = yPosition + yMargin;
+        }
+        private void DrawHorizontalBar(Graphics graphics, Color barColor, int width, int xPosition, int yPosition, int yMargin, out int outYPosition)
+        {
+            graphics.DrawLine(new Pen(barColor, 3), xPosition, yPosition + (yMargin / 2), xPosition + width, yPosition + (yMargin / 2));
             outYPosition = yPosition + yMargin;
         }
     }
